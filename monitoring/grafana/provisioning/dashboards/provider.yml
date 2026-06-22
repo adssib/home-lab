@@ -1,0 +1,14 @@
+apiVersion: 1
+
+# Tells Grafana to load every dashboard .json found in /etc/grafana/dashboards on startup
+# (and re-check every 30s). Drop more .json files there to add more dashboards.
+providers:
+  - name: home-lab
+    orgId: 1
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/dashboards
+      foldersFromFilesStructure: false

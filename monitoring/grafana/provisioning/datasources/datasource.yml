@@ -1,0 +1,12 @@
+apiVersion: 1
+
+# Auto-loaded by Grafana on startup. The dashboard JSON references this datasource by its
+# uid ("prometheus"), so the two must stay in sync.
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
