@@ -50,7 +50,6 @@
     .neofetch .line { display: flex; gap: 0.75rem; }
     .neofetch .k { color: var(--accent); min-width: 64px; }
     .neofetch .v { color: var(--text); word-break: break-word; }
-    .neofetch[data-state="unavailable"] { display: none; }
     footer { margin-top: 2rem; text-align: center; font-size: 0.75rem; color: var(--muted); }
   </style>
 </head>
@@ -85,38 +84,18 @@
 /'\_   _/`\
 \___)=(___/</pre>
       <div class="info">
-        <div class="line"><span class="k">host</span><span class="v" id="ni-host">—</span></div>
-        <div class="line"><span class="k">os</span><span class="v" id="ni-os">—</span></div>
-        <div class="line"><span class="k">kernel</span><span class="v" id="ni-kernel">—</span></div>
-        <div class="line"><span class="k">uptime</span><span class="v" id="ni-uptime">—</span></div>
-        <div class="line"><span class="k">cpu</span><span class="v" id="ni-cpu">—</span></div>
-        <div class="line"><span class="k">memory</span><span class="v" id="ni-mem">—</span></div>
-        <div class="line"><span class="k">disk</span><span class="v" id="ni-disk">—</span></div>
-        <div class="line"><span class="k">load</span><span class="v" id="ni-load">—</span></div>
+        <div class="line"><span class="k">host</span><span class="v">homeserver</span></div>
+        <div class="line"><span class="k">model</span><span class="v">HP Compaq 6720s</span></div>
+        <div class="line"><span class="k">os</span><span class="v">Ubuntu 26.04 LTS (x86_64)</span></div>
+        <div class="line"><span class="k">kernel</span><span class="v">7.0.0-22-generic</span></div>
+        <div class="line"><span class="k">cpu</span><span class="v">Intel Core2 Duo T7250 @ 2.00 GHz (2 cores)</span></div>
+        <div class="line"><span class="k">gpu</span><span class="v">Intel GME965/GLE960 (integrated)</span></div>
+        <div class="line"><span class="k">memory</span><span class="v">2.58 GiB</span></div>
+        <div class="line"><span class="k">disk</span><span class="v">98 GiB (ext4)</span></div>
       </div>
     </section>
 
     <footer>akkarilab.xyz &middot; self-hosted</footer>
   </main>
-
-  <script>
-    fetch('sysinfo.json', { cache: 'no-store' })
-      .then(function (r) { if (!r.ok) throw new Error('no sysinfo'); return r.json(); })
-      .then(function (d) {
-        function set(id, val) { var el = document.getElementById(id); if (el && val) el.textContent = val; }
-        set('ni-host', d.hostname);
-        set('ni-os', d.os);
-        set('ni-kernel', d.kernel ? d.kernel + (d.arch ? ' (' + d.arch + ')' : '') : null);
-        set('ni-uptime', d.uptime);
-        set('ni-cpu', d.cpu ? d.cpu + (d.cores ? ' (' + d.cores + ' cores)' : '') : null);
-        set('ni-mem', (d.mem_used_gib && d.mem_total_gib) ? d.mem_used_gib + ' / ' + d.mem_total_gib + ' GiB' : null);
-        set('ni-disk', (d.disk_used && d.disk_total) ? d.disk_used + ' / ' + d.disk_total + ' (' + d.disk_pct + ')' : null);
-        set('ni-load', d.load);
-      })
-      .catch(function () {
-        var s = document.querySelector('.neofetch');
-        if (s) s.setAttribute('data-state', 'unavailable');
-      });
-  </script>
 </body>
 </html>

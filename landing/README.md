@@ -1,43 +1,25 @@
 # Landing page
 
-The static page served at the root of **https://akkarilab.xyz/** — replaces the default
-"Welcome to nginx!" page with link cards (Grafana, CI/CD) and a neofetch-style system panel.
+The static page served at the root of **https://akkarilab.xyz/** — link cards (Grafana, CI/CD)
+plus a neofetch-style panel of the server's specs.
 
 ## Files
 
-- `index.html` — the whole page. Plain HTML + inline CSS/JS, **no build step, no dependencies.**
-- `sysinfo.sh` — generates `sysinfo.json` (host specs) that the neofetch panel fetches.
-- `sysinfo.json` — generated at runtime, **git-ignored** (never committed).
+- `index.html` — the whole page. Plain HTML + inline CSS. No build step, no JS, no dependencies.
 
 ## How it's served
 
 NGINX serves this folder straight from the git checkout — `root /srv/home-lab/landing;`
-(see [`../nginx/`](../nginx/)). Updating the live page is just `git pull`; no copying.
+(see [`../nginx/`](../nginx/)). Update the live page with `git pull`.
 
-## System-info panel (neofetch)
+## The neofetch panel
 
-A static page can't read the host hardware, so `sysinfo.sh` writes the specs to `sysinfo.json`
-in this folder and the page fetches it (same-origin — no Prometheus exposure, no backend).
-
-Set it up on the server:
-```bash
-sudo chmod +x /srv/home-lab/landing/sysinfo.sh   # (already +x in git, but just in case)
-sudo /srv/home-lab/landing/sysinfo.sh            # generate it once
-cat /srv/home-lab/landing/sysinfo.json           # sanity check
-
-# refresh every 5 min + at boot (root crontab, so it can write into /srv)
-( sudo crontab -l 2>/dev/null; \
-  echo "*/5 * * * * /srv/home-lab/landing/sysinfo.sh"; \
-  echo "@reboot /srv/home-lab/landing/sysinfo.sh" ) | sudo crontab -
-```
-
-If `sysinfo.json` is missing or unreadable, the panel just hides itself — the rest of the
-page still works.
+The specs (host, model, OS, kernel, CPU, GPU, memory, disk) are **hard-coded** in `index.html`.
+They almost never change, so there's no script, cron, or live fetch — just edit the
+`<span class="v">` values if the hardware/OS changes. Grab fresh values with `fastfetch`
+(or `lscpu` / `free -h` / `uname -a`).
 
 ## Editing
 
 - Change the links: edit the `<a href="...">` tags.
-- The CI/CD card is a placeholder; set its `href` and remove the `coming-soon` class when the
-  service is live.
-- Want RAM *type* (e.g. DDR4)? That needs `sudo dmidecode -t memory` — ask and I'll add it to
-  `sysinfo.sh`.
+- The CI/CD card is a placeholder; set its `href` and remove the `coming-soon` class when live.
