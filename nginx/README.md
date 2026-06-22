@@ -1,58 +1,34 @@
 # NGINX
 
 Public entry point for **akkarilab.xyz**. Serves the landing page at `/` and reverse-proxies
-Grafana at `/grafana/`.
+the Angular app (`/angular`), the API (`/api/`) and Grafana (`/grafana/`). Host-package NGINX
+(apt), TLS via Certbot.
 
-> Assumes NGINX is installed as a **host package** (apt), not a container — that matches this
-> setup, since NGINX isn't in `docker ps` but already proxies Grafana. Confirm with:
-> ```bash
-> which nginx && nginx -v
-> ls /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null
-> ```
+`akkarilab.conf` is the **source of truth** for the live config at
+`/etc/nginx/sites-enabled/main.conf`.
 
-## ⚠️ Read before you deploy
-
-You almost certainly **already have a working server block** for akkarilab.xyz (your Grafana
-proxy works today). Do **not** blindly overwrite it and risk breaking TLS or the Grafana
-proxy. `akkarilab.conf` here is a **reference** — the one piece you likely need to *add* to
-your existing config is the landing-page root:
-
-```nginx
-root /var/www/akkarilab;   # or point straight at the repo: /home/<user>/home-lab/landing
-index index.html;
-
-location / {
-    try_files $uri $uri/ =404;
-}
-```
-
-Keep your existing `/grafana/` proxy and your real certificate paths.
-
-## Deploy the landing page
+## Deploy / update
 
 ```bash
-# put the page where nginx will serve it
-sudo mkdir -p /var/www/akkarilab
-sudo cp ../landing/index.html /var/www/akkarilab/
-
-# test the config, THEN reload (never skip the test)
-sudo nginx -t
+sudo cp /srv/home-lab/nginx/akkarilab.conf /etc/nginx/sites-enabled/main.conf
+sudo nginx -t                      # MUST pass before reloading
 sudo systemctl reload nginx
 ```
 
-Then open https://akkarilab.xyz/ — the default nginx page should be gone.
+The landing page itself is served straight from the git checkout (`root /srv/home-lab/landing;`),
+so updating the page is just `git pull` — only nginx *config* changes need the copy above.
 
-## Handy NGINX commands
+> Certbot manages the `ssl_*` / `listen 443 ssl` lines. They're already in `akkarilab.conf`;
+> if certbot renews and edits them, re-sync the repo so it stays the source of truth.
+
+> ⚠️ Don't point `root` at a home dir (`/home/...`) — nginx (www-data) can't traverse it
+> (mode `drwxr-x---`) so you'd get a 403. `/srv` is world-traversable, which is why we use it.
+
+## Handy commands
 
 ```bash
-sudo nginx -t                            # check config is valid before reloading
-sudo systemctl reload nginx              # apply config without dropping connections
-sudo systemctl restart nginx             # full restart
-sudo systemctl status nginx              # is it running?
+sudo nginx -t                            # validate config
+sudo systemctl reload nginx              # apply without dropping connections
+sudo systemctl status nginx              # running?
 sudo tail -f /var/log/nginx/error.log    # debug
 ```
-
-## If NGINX is actually a container
-
-Then it isn't managed here yet — say the word and we'll add it to a Compose file and mount
-this config + the landing page into it. For now this assumes the host-package setup.
