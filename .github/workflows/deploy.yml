@@ -1,0 +1,44 @@
+name: Deploy
+
+# Runs on the self-hosted runner ON the box, only on pushes to main (which only
+# maintainers can do — a fork's PR can never trigger this). Pulls the latest into
+# the live checkout and re-applies, then health-checks. Requires the runner to be
+# registered (ansible-playbook runner.yml) and passwordless sudo for its user.
+on:
+  push:
+    branches: [main]
+
+# Never let two deploys run at once.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to the box
+    runs-on: [self-hosted, home-lab]
+    steps:
+      - name: Pull the latest into /srv/home-lab
+        run: |
+          cd /srv/home-lab
+          sudo git fetch --all --prune
+          sudo git reset --hard origin/main
+
+      - name: Bring up the monitoring stack
+        run: |
+          cd /srv/home-lab/monitoring
+          docker compose pull
+          docker compose up -d
+
+      - name: Deploy the nginx config
+        run: |
+          sudo cp /srv/home-lab/nginx/akkarilab.conf /etc/nginx/sites-enabled/main.conf
+          sudo nginx -t
+          sudo systemctl reload nginx
+
+      - name: Health check
+        run: |
+          sleep 5
+          curl -fsSk -o /dev/null https://localhost/ -H "Host: akkarilab.xyz" && echo "landing OK"
+          curl -fsS  -o /dev/null http://localhost:9090/-/healthy            && echo "prometheus OK"
+          curl -fsS  -o /dev/null http://localhost:3001/api/health           && echo "grafana OK"

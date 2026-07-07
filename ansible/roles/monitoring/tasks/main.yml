@@ -1,0 +1,11 @@
+---
+# Brings up prometheus / grafana / node-exporter. Uses the docker CLI directly so the
+# playbook needs no extra Ansible collections. `docker compose` is idempotent on its own.
+- name: Bring up the monitoring stack
+  ansible.builtin.command: docker compose up -d
+  args:
+    chdir: "{{ repo_dest }}/monitoring"
+  register: monitoring_compose_up
+  changed_when: >-
+    ('Started' in monitoring_compose_up.stderr) or ('Created' in monitoring_compose_up.stderr)
+    or ('Recreated' in monitoring_compose_up.stderr)

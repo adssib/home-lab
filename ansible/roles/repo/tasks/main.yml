@@ -1,0 +1,15 @@
+---
+# git is the source of truth: nginx serves the landing page straight from this checkout
+# and the monitoring stack is composed from it.
+- name: Clone or update the home-lab repo
+  ansible.builtin.git:
+    repo: "{{ repo_url }}"
+    dest: "{{ repo_dest }}"
+    version: "{{ repo_version }}"
+    update: true
+
+- name: Make the checkout world-traversable (nginx reads the landing page from it)
+  ansible.builtin.file:
+    path: "{{ repo_dest }}"
+    state: directory
+    mode: "0755"

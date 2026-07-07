@@ -1,0 +1,22 @@
+---
+# Everything the playbook needs to know about this deployment lives here.
+domain: akkarilab.xyz
+letsencrypt_email: adibakkari@gmail.com
+
+repo_url: https://github.com/adssib/home-lab.git
+repo_dest: /srv/home-lab
+repo_version: main
+
+# nginx: the config lives in the checkout and is copied into place (single source of truth).
+nginx_conf_src: "{{ repo_dest }}/nginx/akkarilab.conf"
+nginx_conf_dest: /etc/nginx/sites-enabled/main.conf
+
+# Self-hosted GitHub Actions runner (used by runner.yml, not the main provision).
+github_repo_url: https://github.com/adssib/home-lab
+runner_user: "{{ ansible_user }}"
+runner_dir: /opt/actions-runner
+runner_name: "{{ inventory_hostname }}"
+runner_labels: self-hosted,home-lab
+# runner_registration_token is NOT stored here — it's short-lived and passed at runtime:
+#   -e runner_registration_token=$(gh api -X POST \
+#        repos/adssib/home-lab/actions/runners/registration-token --jq .token)
