@@ -10,6 +10,8 @@ The server pulls from this repo — no scattered configs, no copy-paste drift.
 | `landing/`    | Static landing page at `https://akkarilab.xyz/` + neofetch panel  |
 | `monitoring/` | Prometheus + Grafana + node-exporter (CPU / memory / disk / net) |
 | `nginx/`      | NGINX config: serves the landing page and reverse-proxies apps    |
+| `ansible/`    | Provisions a clean Ubuntu box into the full stack (IaC)           |
+| `.github/`    | CI (validate configs on PRs) + CD (deploy on push to `main`)      |
 
 Each folder has its own `README.md`.
 

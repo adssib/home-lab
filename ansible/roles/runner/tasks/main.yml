@@ -1,0 +1,91 @@
+---
+# Installs a self-hosted GitHub Actions runner and registers it with the repo.
+# The registration token is short-lived, so it's passed at runtime, never stored:
+#   ansible-playbook runner.yml \
+#     -e runner_registration_token=$(gh api -X POST \
+#          repos/adssib/home-lab/actions/runners/registration-token --jq .token)
+- name: Ensure a registration token was provided
+  ansible.builtin.assert:
+    that:
+      - runner_registration_token is defined
+      - runner_registration_token | length > 0
+    fail_msg: >-
+      No runner_registration_token given. Get a fresh one and pass it at runtime:
+      -e runner_registration_token=$(gh api -X POST
+      repos/adssib/home-lab/actions/runners/registration-token --jq .token)
+    quiet: true
+
+- name: Install runner prerequisites
+  ansible.builtin.apt:
+    name:
+      - curl
+      - tar
+    state: present
+    update_cache: true
+
+- name: Create the runner directory
+  ansible.builtin.file:
+    path: "{{ runner_dir }}"
+    state: directory
+    owner: "{{ runner_user }}"
+    group: "{{ runner_user }}"
+    mode: "0755"
+
+- name: Look up the latest runner release
+  ansible.builtin.uri:
+    url: https://api.github.com/repos/actions/runner/releases/latest
+    return_content: true
+  register: runner_release
+
+- name: Determine the runner version
+  ansible.builtin.set_fact:
+    runner_version: "{{ runner_release.json.tag_name | regex_replace('^v', '') }}"
+
+- name: Download and unpack the runner
+  ansible.builtin.unarchive:
+    src: >-
+      https://github.com/actions/runner/releases/download/v{{ runner_version }}/actions-runner-linux-x64-{{ runner_version }}.tar.gz
+    dest: "{{ runner_dir }}"
+    remote_src: true
+    owner: "{{ runner_user }}"
+    creates: "{{ runner_dir }}/config.sh"
+
+- name: Register the runner (config.sh refuses to run as root, so run as the runner user)
+  ansible.builtin.command:
+    cmd: >-
+      ./config.sh --unattended --replace
+      --url {{ github_repo_url }}
+      --token {{ runner_registration_token }}
+      --name {{ runner_name }}
+      --labels {{ runner_labels }}
+    chdir: "{{ runner_dir }}"
+    creates: "{{ runner_dir }}/.runner"
+  become: true
+  become_user: "{{ runner_user }}"
+
+- name: Check whether the runner service is already installed
+  ansible.builtin.find:
+    paths: /etc/systemd/system
+    patterns: "actions.runner.*.service"
+  register: runner_service_before
+
+- name: Install the runner service
+  ansible.builtin.command:
+    cmd: ./svc.sh install {{ runner_user }}
+    chdir: "{{ runner_dir }}"
+  when: runner_service_before.matched == 0
+  changed_when: true
+
+- name: Locate the runner service unit
+  ansible.builtin.find:
+    paths: /etc/systemd/system
+    patterns: "actions.runner.*.service"
+  register: runner_service
+
+- name: Ensure the runner service is running and enabled
+  ansible.builtin.systemd:
+    name: "{{ runner_service.files[0].path | basename }}"
+    state: started
+    enabled: true
+    daemon_reload: true
+  when: runner_service.matched > 0

@@ -1,0 +1,15 @@
+---
+# Provision the akkarilab home-lab from a clean Ubuntu install to a running stack.
+# Reproduces the manual steps documented in the repo README, idempotently.
+#
+#   cd ansible && ansible-playbook playbook.yml
+#
+- name: Provision akkarilab home-lab
+  hosts: homelab
+  become: true
+  roles:
+    - base        # apt update + base packages
+    - docker      # Docker engine + compose plugin
+    - repo        # git checkout at /srv/home-lab
+    - nginx       # nginx + certbot + site config
+    - monitoring  # prometheus / grafana / node-exporter

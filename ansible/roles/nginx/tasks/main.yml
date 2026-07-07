@@ -1,0 +1,41 @@
+---
+- name: Install nginx and certbot
+  ansible.builtin.apt:
+    name:
+      - nginx
+      - certbot
+      - python3-certbot-nginx
+    state: present
+    update_cache: true
+
+- name: Remove the default nginx site
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Reload nginx
+
+# Idempotent: `creates` skips this entirely once the cert exists (e.g. on the live box).
+- name: Obtain the Let's Encrypt certificate
+  ansible.builtin.command: >-
+    certbot certonly --nginx --non-interactive --agree-tos
+    -m {{ letsencrypt_email }} -d {{ domain }}
+  args:
+    creates: "/etc/letsencrypt/live/{{ domain }}/fullchain.pem"
+
+- name: Deploy the site config from the checkout
+  ansible.builtin.copy:
+    src: "{{ nginx_conf_src }}"
+    dest: "{{ nginx_conf_dest }}"
+    remote_src: true
+    mode: "0644"
+  notify: Reload nginx
+
+- name: Validate the nginx config
+  ansible.builtin.command: nginx -t
+  changed_when: false
+
+- name: Ensure nginx is running and enabled
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: true

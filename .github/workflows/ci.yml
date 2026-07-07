@@ -1,0 +1,39 @@
+name: CI
+
+# Validates configs on every PR and on pushes to main. Runs on GitHub-hosted
+# runners — no server access, no secrets. Purely "does this config parse & lint".
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate configs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate the monitoring compose file
+        run: docker compose -f monitoring/docker-compose.yml config -q
+
+      - name: Lint the Ansible playbooks
+        run: |
+          pipx install "ansible-lint==26.6.0"
+          cd ansible && ansible-lint
+
+      - name: Validate the nginx config
+        run: |
+          # certbot's cert + option files don't exist on the runner, so drop in
+          # throwaway stubs at the paths the config references, then run nginx -t.
+          sudo mkdir -p /etc/letsencrypt/live/akkarilab.xyz
+          sudo openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -keyout /etc/letsencrypt/live/akkarilab.xyz/privkey.pem \
+            -out    /etc/letsencrypt/live/akkarilab.xyz/fullchain.pem \
+            -subj "/CN=akkarilab.xyz"
+          echo "ssl_protocols TLSv1.2 TLSv1.3;" | sudo tee /etc/letsencrypt/options-ssl-nginx.conf
+          sudo openssl dhparam -out /etc/letsencrypt/ssl-dhparams.pem 2048
+          docker run --rm --entrypoint nginx \
+            -v /etc/letsencrypt:/etc/letsencrypt:ro \
+            -v "$PWD/nginx/akkarilab.conf:/etc/nginx/conf.d/default.conf:ro" \
+            nginx:stable -t

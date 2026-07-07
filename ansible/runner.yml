@@ -1,0 +1,13 @@
+---
+# Sets up the self-hosted GitHub Actions runner on the box. Kept separate from the main
+# provision because it needs a short-lived registration token passed at runtime:
+#
+#   ansible-playbook runner.yml \
+#     -e runner_registration_token=$(gh api -X POST \
+#          repos/adssib/home-lab/actions/runners/registration-token --jq .token)
+#
+- name: Set up the self-hosted GitHub Actions runner
+  hosts: homelab
+  become: true
+  roles:
+    - runner
