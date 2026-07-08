@@ -1,101 +1,874 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>akkarilab</title>
-  <style>
-    :root {
-      --bg: #0b0e14; --bg-soft: #111722; --border: #1e2633;
-      --text: #e6edf3; --muted: #8b98a9; --accent: #4ade80;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      min-height: 100vh; display: flex; align-items: center; justify-content: center;
-      padding: 1.5rem; color: var(--text);
-      font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
-      background: radial-gradient(1200px 600px at 50% -10%, #14233b 0%, transparent 60%), var(--bg);
-    }
-    .wrap { width: 100%; max-width: 720px; }
-    header { margin-bottom: 2.25rem; text-align: center; }
-    .title { font-size: clamp(2rem, 6vw, 3.25rem); letter-spacing: -0.03em; font-weight: 700; }
-    .title span { color: var(--accent); }
-    .status { margin-top: 0.75rem; display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--muted); }
-    .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
-    @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 rgba(74,222,128,0.5); }
-      70% { box-shadow: 0 0 0 8px rgba(74,222,128,0); }
-      100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); }
-    }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
-    .card {
-      display: block; text-decoration: none; color: inherit;
-      background: var(--bg-soft); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem;
-      transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
-    }
-    .card:hover { transform: translateY(-3px); border-color: var(--accent); background: #131b29; }
-    .card .icon { font-size: 1.75rem; }
-    .card h2 { margin-top: 0.85rem; font-size: 1.15rem; font-weight: 600; }
-    .card p { margin-top: 0.35rem; font-size: 0.85rem; color: var(--muted); }
-    .card .go { margin-top: 1rem; font-size: 0.8rem; color: var(--accent); }
-    .card.coming-soon { opacity: 0.55; pointer-events: none; }
-    .card.coming-soon .go { color: var(--muted); }
-    .neofetch {
-      margin-top: 1rem; display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap;
-      background: var(--bg-soft); border: 1px solid var(--border); border-radius: 14px;
-      padding: 1.5rem; font-size: 0.82rem;
-    }
-    .neofetch .logo { color: var(--accent); white-space: pre; line-height: 1.15; margin: 0; }
-    .neofetch .info { display: grid; gap: 0.3rem; min-width: 240px; flex: 1; }
-    .neofetch .line { display: flex; gap: 0.75rem; }
-    .neofetch .k { color: var(--accent); min-width: 64px; }
-    .neofetch .v { color: var(--text); word-break: break-word; }
-    footer { margin-top: 2rem; text-align: center; font-size: 0.75rem; color: var(--muted); }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="akkarilab — a self-hosted home lab run by two brothers on a 2008 laptop. Live ops, monitoring, and questionable uptime promises." />
+<title>akkarilab :: mission control</title>
+<style>
+  :root {
+    --bg: #050807;
+    --panel: #0a100c;
+    --panel-2: #0d1410;
+    --line: #16241b;
+    --line-hot: #235c3a;
+    --grn: #4ade80;
+    --grn-deep: #16a34a;
+    --text: #cfe6d4;
+    --muted: #5f7a68;
+    --amber: #fbbf24;
+    --red: #f87171;
+    /* chart palette — validated (dark surface, CVD-safe order) */
+    --c1: #16a34a; --c2: #a855f7; --c3: #0891b2; --c4: #3b82f6; --c5: #ec4899;
+    --mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    /* theme-independent status colors (online/building/denied keep meaning) */
+    --st-ok: #4ade80;
+    /* accent machinery for theming */
+    --acc-rgb: 74,222,128;
+    --acc-bright: #d7ffe4;
+    --spark: #16a34a;
+    --spark-rgb: 22,163,74;
+    --bg-glow: #0a1f14;
+  }
+  html[data-theme="amber"] {
+    --bg: #080604; --panel: #0f0b06; --panel-2: #141009;
+    --line: #251c0e; --line-hot: #6b4e14;
+    --grn: #ffb000; --grn-deep: #d97706;
+    --text: #eadfc6; --muted: #8a7a58;
+    --acc-rgb: 255,176,0; --acc-bright: #ffe6b3;
+    --spark: #d97706; --spark-rgb: 217,119,6;
+    --bg-glow: #221504;
+  }
+  html[data-theme="purple"] {
+    --bg: #070409; --panel: #0e0a14; --panel-2: #130e1b;
+    --line: #221833; --line-hot: #5b3a8a;
+    --grn: #c084fc; --grn-deep: #9333ea;
+    --text: #e2d9ec; --muted: #7a6b8a;
+    --acc-rgb: 192,132,252; --acc-bright: #edd9ff;
+    --spark: #9333ea; --spark-rgb: 147,51,234;
+    --bg-glow: #1d1030;
+  }
+  html[data-theme="cyan"] {
+    --bg: #04070a; --panel: #081019; --panel-2: #0a1520;
+    --line: #0e2233; --line-hot: #155e75;
+    --grn: #22d3ee; --grn-deep: #0891b2;
+    --text: #cfe4ec; --muted: #5d7a86;
+    --acc-rgb: 34,211,238; --acc-bright: #c9f5ff;
+    --spark: #0891b2; --spark-rgb: 8,145,178;
+    --bg-glow: #062030;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background:
+      radial-gradient(1100px 500px at 50% -12%, var(--bg-glow) 0%, transparent 60%),
+      var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 15px;
+    line-height: 1.55;
+    overflow-x: hidden;
+  }
+  ::selection { background: var(--grn); color: #04140a; }
+  a { color: var(--grn); }
+  a:focus-visible, button:focus-visible, .tile:focus-visible {
+    outline: 2px solid var(--grn); outline-offset: 2px;
+  }
+
+  /* CRT scanlines — decorative, very quiet */
+  .scanlines {
+    position: fixed; inset: 0; z-index: 40; pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,.16) 0 1px, transparent 1px 3px);
+    opacity: .5; mix-blend-mode: multiply;
+  }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 30;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    padding: .65rem 1.25rem;
+    background: rgba(5,8,7,.88); backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--line);
+    font-size: .8rem;
+  }
+  .logo { font-weight: 700; font-size: 1rem; letter-spacing: .02em; color: var(--text); text-decoration: none; }
+  .logo b { color: var(--grn); font-weight: 700; }
+  .cursor { display: inline-block; color: var(--grn); animation: blink 1.1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .topbar-right { display: flex; align-items: center; gap: 1.1rem; color: var(--muted); white-space: nowrap; }
+  .badge { display: inline-flex; align-items: center; gap: .45rem; color: var(--st-ok); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--st-ok); animation: pulse 2.2s infinite; }
+  .thm-btn {
+    font: inherit; font-size: .72rem; cursor: pointer;
+    background: none; border: 1px solid var(--line); border-radius: 4px;
+    color: var(--muted); padding: .18rem .55rem;
+    transition: border-color .15s ease, color .15s ease;
+  }
+  .thm-btn:hover { border-color: var(--line-hot); color: var(--grn); }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(74,222,128,.45); }
+    70% { box-shadow: 0 0 0 7px rgba(74,222,128,0); }
+    100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); }
+  }
+  @media (max-width: 560px) { .utc-clock { display: none; } }
+
+  /* ---------- hero ---------- */
+  .hero {
+    min-height: calc(100svh - 46px);
+    display: grid; grid-template-rows: auto 1fr auto;
+    max-width: 1100px; margin: 0 auto; padding: 1.25rem 1.25rem 0;
+  }
+  .hero-head { text-align: center; padding-top: 1.6rem; }
+  .kicker {
+    color: var(--muted); font-size: .72rem; letter-spacing: .32em; text-transform: uppercase;
+  }
+  .hero h1 {
+    margin-top: .5rem;
+    font-size: clamp(1.7rem, 5.2vw, 3rem);
+    letter-spacing: -.02em; font-weight: 700; line-height: 1.15;
+    text-shadow: 0 0 22px rgba(var(--acc-rgb),.25);
+  }
+  .hero h1 em { font-style: normal; color: var(--grn); }
+  .hero-sub { margin-top: .6rem; color: var(--muted); font-size: .86rem; }
+  .hero-sub a { color: var(--grn); text-decoration: none; border-bottom: 1px dashed var(--line-hot); }
+
+  .globe-wrap { position: relative; min-height: 300px; }
+  #globe { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: pan-y; }
+  .sim-tag {
+    position: absolute; right: .25rem; top: .5rem;
+    font-size: .64rem; letter-spacing: .14em; color: var(--muted);
+    border: 1px solid var(--line); border-radius: 3px; padding: .2rem .45rem;
+    background: rgba(5,8,7,.7);
+  }
+  .sim-tag a { color: var(--muted); }
+
+  .ticker {
+    height: 8.6em; overflow: hidden;
+    padding: .7rem .9rem .9rem;
+    border: 1px solid var(--line); border-bottom: none;
+    border-radius: 10px 10px 0 0;
+    background: linear-gradient(180deg, rgba(10,16,12,.92), rgba(10,16,12,.65));
+    font-size: .78rem;
+    display: flex; flex-direction: column; justify-content: flex-end;
+  }
+  .ticker .tl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+  .ticker .tl:last-child { color: var(--text); }
+  .ticker .tl .ok { color: var(--st-ok); }
+  .ticker .tl .geo { color: var(--text); }
+
+  /* ---------- sections ---------- */
+  main { max-width: 1100px; margin: 0 auto; padding: 0 1.25rem 3rem; }
+  section { margin-top: 4.5rem; }
+  .sec-h { display: flex; align-items: center; gap: .8rem; margin-bottom: 1.4rem; }
+  .sec-h .idx { color: var(--muted); font-size: .78rem; }
+  .sec-h h2 { font-size: 1.05rem; letter-spacing: .18em; font-weight: 700; color: var(--grn); }
+  .sec-h .rule { flex: 1; border-top: 1px dashed var(--line-hot); opacity: .6; }
+  .sec-note { color: var(--muted); font-size: .78rem; margin: -0.9rem 0 1.2rem; }
+
+  /* ---------- operators ---------- */
+  .ops { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.1rem; }
+  .term {
+    border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+    background: var(--panel);
+    transition: border-color .2s ease, transform .2s ease;
+  }
+  .term:hover { border-color: var(--line-hot); transform: translateY(-2px); }
+  .term-bar {
+    display: flex; align-items: center; gap: .5rem;
+    padding: .5rem .8rem; background: var(--panel-2); border-bottom: 1px solid var(--line);
+    font-size: .72rem; color: var(--muted);
+  }
+  .term-bar i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .term-bar i:nth-child(1) { background: #f87171; } .term-bar i:nth-child(2) { background: #fbbf24; } .term-bar i:nth-child(3) { background: #4ade80; }
+  .term-bar span { margin-left: .35rem; }
+  .term-body { padding: 1rem 1.1rem 1.2rem; font-size: .84rem; }
+  .term-body .ps { color: var(--grn); }
+  .term-body .out { color: var(--text); margin: .15rem 0 .8rem; }
+  .term-body .out.dim { color: var(--muted); }
+  .term-links { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: .2rem; }
+  .term-links a {
+    text-decoration: none; font-size: .78rem; color: var(--grn);
+    border: 1px solid var(--line-hot); border-radius: 4px; padding: .25rem .6rem;
+    transition: background .15s ease;
+  }
+  .term-links a:hover { background: rgba(var(--acc-rgb),.08); }
+  .term-links .locked { color: var(--muted); border-color: var(--line); cursor: not-allowed; }
+
+  /* ---------- services ---------- */
+  .svc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: .8rem; }
+  .tile {
+    position: relative; display: block; text-align: left; width: 100%;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: .85rem .95rem; color: inherit; text-decoration: none; font: inherit; cursor: pointer;
+    transition: border-color .15s ease, transform .15s ease, background .15s ease;
+  }
+  .tile:hover { transform: translateY(-2px); border-color: var(--line-hot); background: var(--panel-2); }
+  .tile-top { display: flex; align-items: center; gap: .5rem; }
+  .st { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .tile[data-st="online"]   .st { background: var(--st-ok); box-shadow: 0 0 8px rgba(74,222,128,.8); }
+  .tile[data-st="building"] .st { background: var(--amber); animation: pulse-a 1.6s infinite; }
+  .tile[data-st="planned"]  .st { background: transparent; border: 1.5px solid var(--muted); }
+  @keyframes pulse-a {
+    0% { box-shadow: 0 0 0 0 rgba(251,191,36,.5); }
+    70% { box-shadow: 0 0 0 6px rgba(251,191,36,0); }
+    100% { box-shadow: 0 0 0 0 rgba(251,191,36,0); }
+  }
+  .tile h3 { font-size: .86rem; font-weight: 700; letter-spacing: .02em; }
+  .tile p { margin-top: .4rem; font-size: .72rem; color: var(--muted); line-height: 1.45; }
+  .tile-meta { display: flex; justify-content: space-between; margin-top: .6rem; font-size: .66rem; letter-spacing: .08em; }
+  .tile[data-st="online"]   .tile-meta .stx { color: var(--st-ok); }
+  .tile[data-st="building"] .tile-meta .stx { color: var(--amber); }
+  .tile[data-st="planned"]  .tile-meta .stx { color: var(--muted); }
+  .tile-meta .iss { color: var(--muted); }
+
+  /* ---------- telemetry ---------- */
+  .tele { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.1rem; align-items: stretch; }
+  .panel {
+    border: 1px solid var(--line); border-radius: 10px; background: var(--panel);
+    padding: 1rem 1.1rem 1.2rem; min-width: 0;
+  }
+  .panel h3 { font-size: .72rem; letter-spacing: .2em; color: var(--muted); font-weight: 700; margin-bottom: .9rem; }
+  .panel h3 .sim { color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: .05rem .3rem; margin-left: .4rem; font-size: .58rem; letter-spacing: .1em; }
+
+  .donut-flex { display: flex; gap: 1.2rem; align-items: center; flex-wrap: wrap; }
+  #donut { flex: none; }
+  .legend { display: grid; gap: .45rem; font-size: .76rem; min-width: 150px; }
+  .legend .li { display: flex; align-items: center; gap: .55rem; }
+  .legend .sw { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+  .legend .lv { margin-left: auto; color: var(--text); }
+  .legend .ln { color: var(--muted); }
+  .chart-tip {
+    position: fixed; z-index: 50; pointer-events: none; display: none;
+    background: var(--panel-2); border: 1px solid var(--line-hot); border-radius: 6px;
+    padding: .35rem .6rem; font-size: .72rem; color: var(--text); white-space: nowrap;
+  }
+
+  .spark-row { display: grid; gap: 1rem; }
+  .spark .sl { display: flex; justify-content: space-between; font-size: .72rem; margin-bottom: .25rem; }
+  .spark .sl .k { color: var(--muted); letter-spacing: .12em; }
+  .spark .sl .v { color: var(--text); }
+  .spark canvas { width: 100%; height: 44px; display: block; }
+
+  .neofetch { display: flex; gap: 1.4rem; align-items: center; flex-wrap: wrap; font-size: .8rem; }
+  .neofetch .nf-logo { color: var(--grn); white-space: pre; line-height: 1.15; font-size: .78rem; }
+  .neofetch .info { display: grid; gap: .28rem; min-width: 220px; flex: 1; }
+  .neofetch .line { display: flex; gap: .7rem; }
+  .neofetch .k { color: var(--grn); min-width: 62px; }
+  .neofetch .v { color: var(--text); word-break: break-word; }
+
+  footer {
+    border-top: 1px solid var(--line); margin-top: 4rem; padding: 1.6rem 1.25rem 2.2rem;
+    text-align: center; color: var(--muted); font-size: .74rem;
+  }
+  footer a { color: var(--grn); text-decoration: none; }
+
+  /* ---------- access denied modal ---------- */
+  .denied-veil {
+    position: fixed; inset: 0; z-index: 60; display: none;
+    align-items: center; justify-content: center;
+    background: rgba(3,5,4,.82); backdrop-filter: blur(3px);
+  }
+  .denied-veil.open { display: flex; }
+  .denied {
+    width: min(480px, calc(100vw - 2.5rem));
+    border: 1px solid var(--red); border-radius: 10px; background: #120a0a;
+    box-shadow: 0 0 40px rgba(248,113,113,.25);
+    padding: 1.3rem 1.4rem 1.5rem; font-size: .85rem;
+    animation: glitch-in .28s steps(3);
+  }
+  @keyframes glitch-in {
+    0% { transform: translate(-6px, 2px) skewX(4deg); opacity: .2; }
+    50% { transform: translate(4px, -2px) skewX(-3deg); opacity: .7; }
+    100% { transform: none; opacity: 1; }
+  }
+  .denied h4 { color: var(--red); letter-spacing: .3em; font-size: 1rem; }
+  .denied .dl { margin-top: .9rem; color: var(--text); }
+  .denied .dl b { color: var(--amber); font-weight: 400; }
+  .denied .dhint { margin-top: .9rem; color: var(--muted); font-size: .74rem; }
+  .denied .dbtns { display: flex; gap: .7rem; margin-top: 1.2rem; }
+  .denied a, .denied button {
+    font: inherit; font-size: .76rem; cursor: pointer; text-decoration: none;
+    border: 1px solid var(--line-hot); background: none; color: var(--grn);
+    border-radius: 4px; padding: .35rem .7rem;
+  }
+  .denied button { border-color: #4a2a2a; color: var(--red); }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .cursor, .dot, .tile[data-st="building"] .st { animation: none; }
+    .denied { animation: none; }
+    .term:hover, .tile:hover { transform: none; }
+  }
+</style>
 </head>
 <body>
-  <main class="wrap">
-    <header>
-      <div class="title">akkari<span>lab</span></div>
-      <div class="status"><span class="dot"></span> home lab &middot; online</div>
-    </header>
+<div class="scanlines" aria-hidden="true"></div>
 
-    <div class="grid">
-      <a class="card" href="/grafana/">
-        <div class="icon">📊</div>
-        <h2>Grafana</h2>
-        <p>Live metrics — CPU, memory, disk &amp; network health.</p>
-        <div class="go">open dashboard →</div>
-      </a>
-      <a class="card coming-soon" href="#">
-        <div class="icon">🔧</div>
-        <h2>CI / CD</h2>
-        <p>Pipelines &amp; deployments.</p>
-        <div class="go">coming soon</div>
-      </a>
+<header class="topbar">
+  <a class="logo" href="/" aria-label="akkarilab"><span id="logoTxt">akkari<b>lab</b></span><span class="cursor">_</span></a>
+  <div class="topbar-right">
+    <button class="thm-btn" id="thmBtn" title="cycle color theme">thm:amber</button>
+    <span class="utc-clock" id="clock" aria-hidden="true">--:--:-- UTC</span>
+    <span class="badge"><span class="dot"></span>SYSTEMS NOMINAL</span>
+  </div>
+</header>
+
+<section class="hero" aria-label="live overview">
+  <div class="hero-head">
+    <div class="kicker">self-hosted // no cloud was harmed</div>
+    <h1>two brothers. one <em>2008 laptop</em>.<br />an entire ops platform.</h1>
+    <p class="hero-sub">akkarilab is a live home-lab built in public — every service below runs on hardware
+      older than TikTok. <a href="https://github.com/adssib/home-lab">source on GitHub →</a></p>
+  </div>
+  <div class="globe-wrap">
+    <canvas id="globe" aria-label="rotating globe showing simulated connections to the akkarilab server"></canvas>
+    <div class="sim-tag">SIMULATED FEED · real GeoIP pipeline <a href="https://github.com/adssib/home-lab/issues/5">in dev #5</a></div>
+    <noscript><p style="text-align:center;color:#5f7a68;padding-top:3rem">[ globe requires javascript — the services below don't ]</p></noscript>
+  </div>
+  <div class="ticker" id="ticker" aria-hidden="true"></div>
+</section>
+
+<main>
+  <section id="operators" aria-label="operators">
+    <div class="sec-h"><span class="idx">01</span><h2>OPERATORS</h2><div class="rule"></div></div>
+    <div class="ops">
+      <article class="term">
+        <div class="term-bar"><i></i><i></i><i></i><span>hacker1@akkarilab: ~</span></div>
+        <div class="term-body">
+          <div class="ps">$ whoami</div>
+          <div class="out">hacker1 — adib. software engineer. builds the infra, breaks the infra, fixes the infra.</div>
+          <div class="ps">$ uptime -p</div>
+          <div class="out dim">up since the router first survived a full week</div>
+          <div class="ps">$ ls links/</div>
+          <div class="term-links">
+            <a href="https://adssib.github.io/portfolio/">portfolio</a>
+            <a href="https://github.com/adssib">github</a>
+          </div>
+        </div>
+      </article>
+      <article class="term">
+        <div class="term-bar"><i></i><i></i><i></i><span>hacker2@akkarilab: ~</span></div>
+        <div class="term-body">
+          <div class="ps">$ whoami</div>
+          <div class="out">hacker2 — the brother. co-operator. network wrangler. head of the chaos department.</div>
+          <div class="ps">$ uptime -p</div>
+          <div class="out dim">up since he unplugged the wrong cable (once)</div>
+          <div class="ps">$ ls links/</div>
+          <div class="term-links">
+            <span class="locked">[ classified ]</span>
+          </div>
+        </div>
+      </article>
     </div>
+  </section>
 
-    <section class="neofetch" aria-label="system info">
-      <pre class="logo">   .--.
+  <section id="services" aria-label="services">
+    <div class="sec-h"><span class="idx">02</span><h2>SERVICES</h2><div class="rule"></div></div>
+    <p class="sec-note">● online &nbsp;·&nbsp; ◉ building now &nbsp;·&nbsp; ○ in development — locked modules open a ticket, not the app.</p>
+    <div class="svc-grid" id="svcGrid"></div>
+  </section>
+
+  <section id="telemetry" aria-label="telemetry">
+    <div class="sec-h"><span class="idx">03</span><h2>TELEMETRY</h2><div class="rule"></div></div>
+    <div class="tele">
+      <div class="panel">
+        <h3>TRAFFIC BY REGION <span class="sim">SIM</span></h3>
+        <div class="donut-flex">
+          <canvas id="donut" width="180" height="180" role="img" aria-label="Simulated traffic share: Europe 42%, North America 27%, Asia 17%, Africa 9%, Other 5%"></canvas>
+          <div class="legend" id="legend"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>HOST VITALS <span class="sim">SIM</span></h3>
+        <div class="spark-row">
+          <div class="spark" data-k="CPU"><div class="sl"><span class="k">CPU</span><span class="v">--%</span></div><canvas></canvas></div>
+          <div class="spark" data-k="MEM"><div class="sl"><span class="k">MEM</span><span class="v">--%</span></div><canvas></canvas></div>
+          <div class="spark" data-k="NET"><div class="sl"><span class="k">NET</span><span class="v">-- kb/s</span></div><canvas></canvas></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>HOST</h3>
+        <div class="neofetch">
+          <pre class="nf-logo">   .--.
   |o_o |
   |:_/ |
  //   \ \
 (|     | )
 /'\_   _/`\
 \___)=(___/</pre>
-      <div class="info">
-        <div class="line"><span class="k">host</span><span class="v">homeserver</span></div>
-        <div class="line"><span class="k">model</span><span class="v">HP Compaq 6720s</span></div>
-        <div class="line"><span class="k">os</span><span class="v">Ubuntu 26.04 LTS (x86_64)</span></div>
-        <div class="line"><span class="k">kernel</span><span class="v">7.0.0-22-generic</span></div>
-        <div class="line"><span class="k">cpu</span><span class="v">Intel Core2 Duo T7250 @ 2.00 GHz (2 cores)</span></div>
-        <div class="line"><span class="k">gpu</span><span class="v">Intel GME965/GLE960 (integrated)</span></div>
-        <div class="line"><span class="k">memory</span><span class="v">2.58 GiB</span></div>
-        <div class="line"><span class="k">disk</span><span class="v">98 GiB (ext4)</span></div>
+          <div class="info">
+            <div class="line"><span class="k">host</span><span class="v">homeserver</span></div>
+            <div class="line"><span class="k">model</span><span class="v">HP Compaq 6720s</span></div>
+            <div class="line"><span class="k">os</span><span class="v">Ubuntu 26.04 LTS (x86_64)</span></div>
+            <div class="line"><span class="k">kernel</span><span class="v">7.0.0-22-generic</span></div>
+            <div class="line"><span class="k">cpu</span><span class="v">Intel Core2 Duo T7250 @ 2.00 GHz (2 cores)</span></div>
+            <div class="line"><span class="k">gpu</span><span class="v">Intel GME965/GLE960 (integrated)</span></div>
+            <div class="line"><span class="k">memory</span><span class="v">2.58 GiB</span></div>
+            <div class="line"><span class="k">disk</span><span class="v">98 GiB (ext4)</span></div>
+          </div>
+        </div>
       </div>
-    </section>
+    </div>
+  </section>
+</main>
 
-    <footer>akkarilab.xyz &middot; self-hosted</footer>
-  </main>
+<footer>
+  akkarilab.xyz · self-hosted · <a href="https://github.com/adssib/home-lab">github.com/adssib/home-lab</a> · powered by one very determined Core2 Duo
+</footer>
+
+<div class="denied-veil" id="veil" role="dialog" aria-modal="true" aria-labelledby="deniedTitle">
+  <div class="denied">
+    <h4 id="deniedTitle">ACCESS DENIED</h4>
+    <div class="dl">module: <b id="dMod">—</b><br />status: <b>IN_DEVELOPMENT</b></div>
+    <p class="dhint">this module exists only as a ticket and a dream. progress is tracked in the open.</p>
+    <div class="dbtns">
+      <a id="dIssue" href="#" target="_blank" rel="noopener">view ticket →</a>
+      <button id="dClose">[esc] close</button>
+    </div>
+  </div>
+</div>
+
+<div class="chart-tip" id="tip"></div>
+
+<script>
+"use strict";
+/* ============================================================ config */
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ============================================================ theme */
+const THEMES = ["amber", "green", "cyan", "purple"];
+let ACC, ACC_BRIGHT, TXT, MUT, PANEL, SPARK, SPARK_RGB;
+function loadThemeColors() {
+  const c = getComputedStyle(document.documentElement);
+  const v = n => c.getPropertyValue(n).trim();
+  ACC = v("--acc-rgb"); ACC_BRIGHT = v("--acc-bright");
+  TXT = v("--text"); MUT = v("--muted"); PANEL = v("--panel");
+  SPARK = v("--spark"); SPARK_RGB = v("--spark-rgb");
+}
+const themeRedraws = [];   // chart redraw hooks, filled in below
+function applyTheme(name) {
+  if (name === "green") delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = name;
+  try { localStorage.setItem("akk-theme", name); } catch (e) {}
+  document.getElementById("thmBtn").textContent = "thm:" + name;
+  loadThemeColors();
+  themeRedraws.forEach(f => f());
+}
+let themeIdx = Math.max(0, THEMES.indexOf((() => { try { return localStorage.getItem("akk-theme"); } catch (e) { return null; } })() || "amber"));
+applyTheme(THEMES[themeIdx]);
+document.getElementById("thmBtn").addEventListener("click", () => {
+  themeIdx = (themeIdx + 1) % THEMES.length;
+  applyTheme(THEMES[themeIdx]);
+});
+
+/* ============================================================ logo boot-typing */
+(function typeLogo() {
+  const el = document.getElementById("logoTxt");
+  if (REDUCED) return;                       // full logo stays as-is
+  const full = "akkarilab";
+  let i = 0;
+  el.innerHTML = "";
+  const tick = () => {
+    i++;
+    el.innerHTML = full.slice(0, Math.min(i, 6)) + (i > 6 ? "<b>" + full.slice(6, i) + "</b>" : "");
+    if (i < full.length) setTimeout(tick, 110 + Math.random() * 90);
+  };
+  setTimeout(tick, 250);
+})();
+const HOME = { name: "AKKARILAB", lat: 45.50, lon: -73.57 };         // Montreal
+const CITIES = [
+  ["New York","US",40.71,-74.01],["Toronto","CA",43.65,-79.38],["Los Angeles","US",34.05,-118.24],
+  ["São Paulo","BR",-23.55,-46.63],["London","GB",51.51,-0.13],["Paris","FR",48.86,2.35],
+  ["Frankfurt","DE",50.11,8.68],["Amsterdam","NL",52.37,4.90],["Stockholm","SE",59.33,18.06],
+  ["Casablanca","MA",33.57,-7.59],["Cairo","EG",30.04,31.24],["Lagos","NG",6.52,3.37],
+  ["Dubai","AE",25.20,55.27],["Mumbai","IN",19.07,72.88],["Singapore","SG",1.35,103.82],
+  ["Tokyo","JP",35.68,139.69],["Seoul","KR",37.57,126.98],["Sydney","AU",-33.87,151.21],
+];
+const PATHS = ["/","/grafana/","/grafana/api/health","/api/health","/index.html","/grafana/d/node-exporter"];
+const LANDMASK_B64 = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADg/wEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADA/v8/AOD//z8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD+///D/////5//AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPAH/j/+//////8PAAAAgB0AAHgAAAAAAD8AAAAAAAAAAAAAAAAAAAAAAAAAAOD//wP8//////8BAACAfx4AAAAAAAAAAP4AAAAAAAAAAAAAAAAAAAAAAAA4+I73//n///////8AAAAAfwAAAAAAAAAAAAAfAAAAAAAAAAAAAAAAAAAAAOAQACDwP4D///////8BAAAAPAQAAAAAAAAAAAAYAAAAAAAAAAAAAAAAAAAAADzAgPP5H8D//////38AAAAAAAAAAAAA4AEAAAD+DwAAAAAAAAAAAAAAAAAAAIC/g7PfBwAA/v////8AAAAAAAAAAADgBwAAwP//PwAA4B8AAAAAAAAAAAAAAAAMAAD8AgAA+P////8AAAAAAAAAAABwAAAA/P//AwAAAAAAAAAAAAAAAAAAAP8Ahvc5OwAA8P///38AAAAAAAAAAAAcAADg////34cHAAcAAAAAAAAAAAAAgN9/xzf8RwAA4P///z8AAAAAAAAAAAAPAB7g//////8fgB8AAAAAAQAAAAAAAO//B3f8/wsA4P///z8AAAAAAAAAAAAPAG////////8f2f8HAAAAAAD4HwAAAAD8H/D4/38A4P///xMAAAAAAPAHAAAAgN//////////////DwAAAAD+///h/4//H+/Bg/8BwP7//w8AAAAAwP8fAAAAj9///////////////88/AeD///////8DB8TPB/4AAP///wAAAAAA8P//AwDjf77/////////////////DwD////////////vh/kPwP//BwAAAAAA/P//H/P//5//////////////////34H8////////////Afw/gP//AQAAAAAA/v+fH////+///////////////////vD///////////9fAPwYgP8PAOA/AAAA/+N/8P//////////////////////QID4///////////Pw/0DAP8HAMAfAACA//F//v////////////////////8/AAP4///////////BBPAHAP4HAAAAAADg//z///////////////////////9/AID///////////8AQ8ABAPwBAAAAAAD8P/7///////////////////////9fAMD//////////z8AwA8AAPgBAAAAAAD+H/7/////////////////////Of8BAID///z//////z8AwD8AAMABAAAAAAD+P/z///////////////////9/wH8AAAD8MwD//////x8AwH8MAAAAAAAAAAD+P2D///////////////////95cAAAAACAAwD8/////38AwP8eAAAAAAAAgAGcH/D//////////////////wEAOAAAAADADgDA/////38AgP8/AAAAAAAAwANAH/T//////////////////wAAfgAAAAAwAAAA//////8PgP8/AAAAAAAAwAFwD/7/////////////////PwAAfwAAAAAGAAAA//////8/wP//AAAAAAAAwAOwA/7/////////////////DwCAPwAAAIAAAAAA/v//////8///BwAAAAAAOAcgcP//////////////////HwAAHwAAAAAAAACA+P//////4///DwAAAAAAOA74/////////////////////wUADwAAAAAAAAAA8P//////4///DwAAAAAAGD///////////////////////wUAAwAAAAAAAAAA8P//////7///FwAAAAAAAB///////////////////////wUAAgAAAAAAAAAA0P//////////DAAAAAAAgOH//////////////////////w0AAAAAAAAAAAAAYP////////8xLAAAAAAAAPz//////////////////////wwAAAAAAAAAAAAAAP7//////38HfgAAAAAAgP///////////////////////wQAAAAAAAAAAAAAAP3///////8HUAAAAAAAAP7/////////////////////fwQAAAAAAAAAAAAAAP////////+XAAAAAAAAAPz///93/D/+////////////PwwAAAAAAAAAAAAAAP////////9/AAAAAAAAAPj//f9j/g/+////////////HwAAAAAAAAAAAAAAAP////////8MAAAAAAAAAPj/+P8B/Mf/////////////DwQAAAAAAAAAAAAAAP///////z8AAAAAAAAAcPzH8/8A8I//////////////Bx4AAAAAAAAAAAAAAP///////x8AAAAAAAAA+H+Aw/8AwA/+//////////9/AA8AAAAAAAAAAAAAAP///////x8AAAAAAAAA+D8Aj//w4R/8//////////8/AAAAAAAAAAAAAAAAAP///////wMAAAAAAAAA+B8wuE/+/z/+/////////98fAAMAAAAAAAAAAAAAAP///////wMAAAAAAAAA+A8wEMf//x/+/////////0cOAAMAAAAAAAAAAAAAAP7//////wEAAAAAAAAA+A8AAI7//x/8/////////wMOAAEAAAAAAAAAAAAAAP7//////wAAAAAAAAAA+AcABob//z/8/////////zccwAEAAAAAAAAAAAAAAPz//////wAAAAAAAAAAQOB/AAQ2/////////////x8c8AEAAAAAAAAAAAAAAPj//////wAAAAAAAAAAQPx/AAAA/////////////w8Y/gEAAAAAAAAAAAAAAPD/////fwAAAAAAAAAA4P8/AAAA/////////////w+EGwAAAAAAAAAAAAAAAMD/////HwAAAAAAAAAA8P9/AACA/////////////x/AAwAAAAAAAAAAAAAAAID/////DwAAAAAAAAAA+P//BwaA/////////////x/AAAAAAAAAAAAAAAAAAID9////BwAAAAAAAAAA/P//D3+E/////////////z9AAAAAAAAAAAAAAAAAAAD5////BwAAAAAAAAAA/P//f////////////////x8AAAAAAAAAAAAAAAAAAADy/x8GBgAAAAAAAAAA/P/////v/8///////////z8AAAAAAAAAAAAAAAAAAAD0/w8ABgAAAAAAAAAA/v////+//4///////////z8AAAAAAAAAAAAAAAAAAADu/wcADgAAAAAAAACA//////8f/x/+/////////x8AAAAAAAAAAAAAAAAAAACI/wcALAAAAAAAAADA//////8//z/g/////////w8AAAAAAAAAAAAAAAAAAACQ/wcACAAAAAAAAADg//////9//r+A/////////wcAAAAAAAAAAAAAAAAAAAAQ/wMAAAAAAAAAAADg//////9//n8cgP///////ycAAAAAAAAAAAAAAAAAAAAA/gMAAAAAAAAAAADw////////+P9/AP///////xEAAAAAAAAAAAAAAAAAAAAA/AMAHQAAAAAAAADw////////+P//APz/f///fxAAAAAAAAAAAAAAAAAAAAAA+AcAYAAAAAAAAAD4////////+f9/APz/B///BgAAAAAAAAAAAAAAAAAAAAAA/AccgAEAAAAAAADw////////8f9/AOD/B/5/AAAAAAAAAAAAAAAAAQAAAAAA+A8eADgAAAAAAADw////////4f8/AOD/Afw/BgAAAAAAAAAAAAAAAAAAAAAA8J8PAPwCAAAAAADw////////4/8fAOD/APw/AgAAAAAAAAAAAAAAAAAAAAAAgP8PAAAAAAAAAADw////////x/8HAOB/APx/ADAAAAAAAAAAAAAAAAAAAAAAAP4PAAAAAAAAAAD4////////h/8BAOA/APz/ADAAAAAAAAAAAAAAAAAAAAAAAID/AAAAAAAAAAD4////////j/8AAMAPAMD/ATAAAAAAAAAAAAAAAAAAAAAAAAD/AQAAAAAAAAD4////////nx8AAMAPAMD/ATAAAAAAAAAAAAAAAAAAAAAAAAD8AAAAAAAAAAD4////////vwcAAIAPAMD/AcAAAAAAAAAAAAAAAAAAAAAAAADgAQAAAAAAAAD4////////fwAAAIAPAMD8AQABAAAAAAAAAAAAAAAAAAAAAADAAAgAAAAAAADw////////f2AAAAAPAID4AUACAAAAAAAAAAAAAAAAAAAAAADAAe9TAAAAAADg/////////34AAAAPAEBwAAgAAAAAAAAAAAAAAAAAAAAAAAAAE+9/AAAAAADA/////////38AAAAXAEAgAAQCAAAAAAAAAAAAAAAAAAAAAAAAz///AAAAAACA/////////z8AAAASAMAAAIACAAAAAAAAAAAAAAAAAAAAAAAAyP//AQAAAACA/////////z8AAAAwAIAAAEAHAAAAAAAAAAAAAAAAAAAAAAAAgP//AwAAAAAA/v///////x8AAAAwAAADAAMBAAAAAAAAAAAAAAAAAAAAAAAAwP//fwAAAAAA/A/+/////x8AAAAAAAAHAAcAAAAAAAAAAAAAAAAAAAAAAAAAgP///wAAAAAAEAD8/////w8AAAAAADAGwAcAAAAAAAAAAAAAAAAAAAAAAAAAgP///wEAAAAAAADA/////wcAAAAAAGAG4AEAAAAAAAAAAAAAAAAAAAAAAAAA4P///wEAAAAAAADA/////wMAAAAAAMAM+AMAAAAAAAAAAAAAAAAAAAAAAAAA4P///wMAAAAAAADg/////wEAAAAAAIAL/gMQAAAAAAAAAAAAAAAAAAAAAAAA8P///wMAAAAAAADg////fwAAAAAAAIAH/vMQAAAAAAAAAAAAAAAAAAAAAAAA8P///wcAAAAAAADg////PwAAAAAAAAAP/gMAAQAAAAAAAAAAAAAAAAAAAAAA+P///38AAAAAAADg////PwAAAAAAAAAO/DmAAwAAAAAAAAAAAAAAAAAAAAAA+P///38BAAAAAADA////HwAAAAAAAAA+/DkA8gAAAAAAAAAAAAAAAAAAAAAA8P////8fAAAAAACA////DwAAAAAAAAA8wChE/gcAAAAAAAAAAAAAAAAAAAAA+P////8/AAAAAACA////BwAAAAAAAAA4AEAA8B8AAAAAAAAAAAAAAAAAAAAA+P//////AQAAAAAA////BwAAAAAAAAAwAEAAxD8NAAAAAAAAAAAAAAAAAAAA+P//////AQAAAAAA////BwAAAAAAAADAAQAAxP+AAAAAAAAAAAAAAAAAAAAA8P//////AQAAAAAA/v//BwAAAAAAAACAHwAAwH8ABAAAAAAAAAAAAAAAAAAA4P//////AQAAAAAA/v//BwAAAAAAAAAAQFYEAMcAAAAAAAAAAAAAAAAAAAAA4P//////AAAAAAAA/v//DwAAAAAAAAAAAAgBAIABMAAAAAAAAAAAAAAAAAAAwP//////AAAAAAAA/v//DwAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAgP////9/AAAAAAAA/P//DwAAAAAAAAAAAAAAAQQAAAAAAAAAAAAAAAAAAAAAgP////8/AAAAAAAA/v//HyAAAAAAAAAAAACAHwQAAAAAAAAAAAAAAAAAAAAAAP////8fAAAAAAAA/v//HyAAAAAAAAAAAADADwwAAAAAAAAAAAAAAAAAAAAAAP////8fAAAAAAAA////HzAAAAAAAAAAAADsDxwAAAAAAAAAAAAAAAAAAAAAAP7///8fAAAAAAAA////DzgAAAAAAAAAAAD/DxwAAAAAAAAAAAAAAAAAAAAAAPj///8fAAAAAAAA////Dz8AAAAAAAAAAAD/Pz4AAAiAAAAAAAAAAAAAAAAAAOD///8fAAAAAAAA////Ax8AAAAAAAAAAMD//z4AAABAAAAAAAAAAAAAAAAAAMD///8PAAAAAAAA////AB8AAAAAAAAAAMD//z8AAAAAAAAAAAAAAAAAAAAAAMD///8PAAAAAAAA/v9/AB8AAAAAAAAAAOD//38AAAAAAAAAAAAAAAAAAAAAAMD///8PAAAAAAAA/v9/AB8AAAAAAAAAAPz///8BAAEAAAAAAAAAAAAAAAAAAMD///8HAAAAAAAA/P9/gA8AAAAAAAAAgP////8BAAIAAAAAAAAAAAAAAAAAAMD///8DAAAAAAAA/P//gA8AAAAAAAAAwP////8DAAAAAAAAAAAAAAAAAAAAAMD//38AAAAAAAAA/P9/AA8AAAAAAAAAwP////8HAAAAAAAAAAAAAAAAAAAAAOD//x8AAAAAAAAA+P9/AAcAAAAAAAAA4P////8PAAAAAAAAAAAAAAAAAAAAAOD//w8AAAAAAAAA+P8fAAIAAAAAAAAAwP////8fAAAAAAAAAAAAAAAAAAAAAOD//wcAAAAAAAAA+P8fAAAAAAAAAAAA4P////8fAAAAAAAAAAAAAAAAAAAAAOD//wcAAAAAAAAA+P8fAAAAAAAAAAAAwP////8fAAAAAAAAAAAAAAAAAAAAAOD//wcAAAAAAAAA8P8PAAAAAAAAAAAAgP////8/AAAAAAAAAAAAAAAAAAAAAOD//wMAAAAAAAAA4P8HAAAAAAAAAAAAgP////8fAAAAAAAAAAAAAAAAAAAAAPD//wMAAAAAAAAA4P8HAAAAAAAAAAAAgP////8fAAAAAAAAAAAAAAAAAAAAAPD//wEAAAAAAAAAwP8DAAAAAAAAAAAAAP////8fAAAAAAAAAAAAAAAAAAAAAOD//wAAAAAAAAAAwP8BAAAAAAAAAAAAAP8D/P8PAAAAAAAAAAAAAAAAAAAAAPD/fwAAAAAAAAAAwH8AAAAAAAAAAAAAgP8A2P8HAAAAAAAAAAAAAAAAAAAAAPD/OwAAAAAAAAAAgAEAAAAAAAAAAAAAAAcA6P8HAAAAAAAAAAAAAAAAAAAAAPj/BwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwP8DAAACAAAAAAAAAAAAAAAAAPj/BwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP8DAAAEAAAAAAAAAAAAAAAAAPz/BwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP8DAAAIAAAAAAAAAAAAAAAAAPj/AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGgAAAA4AAAAAAAAAAAAAAAAAPg/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAAAAPw/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYAAAAAAAAAAAAAAAAAPwHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAAAAALAAAAAAAAAAAAAAAAAPwfAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAAAIADAAAAAAAAAAAAAAAAAPgHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAMABAAAAAAAAAAAAAAAAAPwHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAAAAAAAAAAAAAAAAAAP4BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHgAAAAAAAAAAAAAAAAAAP4BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAAAAAAAAAAAAAAAAAAAP4DAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP8BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP8AAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH6AAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAAAIAfAAAAAAAeeADADwAAAAAAAAAAAAAAAAAAAAAAAAAHAAAAAAAAAAAAAAAAAPD/AADA/////////z8AAAAAAAAAAAAAAAAAAAAAAAAHAAAAAAAAAAAAAAAAgP///wH4//////////8DAAAAAAAAAAAAAAAAAAAAADAfAAAAAAAAAAAAAADw8////wP+////////////AwAAAAAAAAAAAAAAAAAAAHA/AAAAAAAAAAA8//P//////+D/////////////HwAAAAAAAAAAAAAAAAAAAP5+AAAAAAAA5v////////////D//////////////38AAAAAAAAAAAAAAAAAAAB+AAAAAACA/////////////////////////////38AAAAAAAAAYAYA4ON/OPh/AAAAAADw/////////////////////////////x8AAAAAAADwv/MXgP////8fAAAAAADw/////////////////////////////wMAAAAAAPz///////////8HAAAAAAD+/////////////////////////////wAAAAAAAPz//////////z8AAAAAAP///////////////////////////////wAAAADA/////////////wEAAAAA8P///////////////////////////////wAAAACH////////////PwAAAPgA/////////////////////////////////wcAAAAcgP//////////fwAAAP4BwP//////////////////////////////HwAAAAAAAP7//////////wf8wD8AwP//////////////////////////////DwAAAAAA/v////////////8HAAD4////////////////////////////////HwAAAAAA+P//////////////4f///////////////////////////////////wAAAAAA/P///////////////////////////////////////////////////x8A3x8AAP7///////////////////////////////////////////////////8/////f///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////";
+
+/* ============================================================ clock */
+const clockEl = document.getElementById("clock");
+setInterval(() => {
+  clockEl.textContent = new Date().toISOString().slice(11, 19) + " UTC";
+}, 1000);
+
+/* ============================================================ services */
+const SERVICES = [
+  { n: "Grafana",              d: "Live metrics — CPU, memory, disk & network health.", st: "online",   href: "/grafana/" },
+  { n: "CI / CD",              d: "Pipelines & auto-deploys straight from git.",        st: "planned",  iss: 1 },
+  { n: "Latency Monitor",      d: "Ping targets, packet loss, jitter over time.",       st: "planned",  iss: 2 },
+  { n: "Internet Quality",     d: "ISP speed & reliability dashboard.",                 st: "planned",  iss: 3 },
+  { n: "Security Monitoring",  d: "Auth failures, port scans, weird traffic.",          st: "planned",  iss: 4 },
+  { n: "Visitor Analytics Map",d: "GeoIP-enriched access logs — feeds this globe.",     st: "planned",  iss: 5 },
+  { n: "Log Aggregation",      d: "Every service's logs, one searchable place.",        st: "planned",  iss: 6 },
+  { n: "Auto Recovery",        d: "Services that restart themselves at 3 AM.",          st: "planned",  iss: 7 },
+  { n: "Public Status Page",   d: "Honest uptime, published for the world.",            st: "planned",  iss: 8 },
+  { n: "Infra Alerting",       d: "Pages us before you notice anything broke.",         st: "planned",  iss: 9 },
+  { n: "SSL / Cert Monitor",   d: "Certificates that never expire by surprise.",        st: "planned",  iss: 10 },
+  { n: "Backup Validation",    d: "Backups that are actually restorable.",              st: "planned",  iss: 11 },
+  { n: "Ansible IaC",          d: "The whole box rebuilt from one command.",            st: "building", iss: 12 },
+  { n: "SSH Honeypot",         d: "A fake door for real attackers. We take notes.",     st: "planned",  iss: 13 },
+  { n: "Chaos Testing",        d: "We break it on purpose so it survives accidents.",   st: "planned",  iss: 14 },
+  { n: "SLO / Error Budgets",  d: "Reliability targets with burn-rate alerts.",         st: "planned",  iss: 15 },
+  { n: "Blackbox Probing",     d: "Outside-in checks on every public endpoint.",        st: "planned",  iss: 16 },
+  { n: "k3s Migration",        d: "The compose stack goes Kubernetes.",                 st: "planned",  iss: 17 },
+];
+const STX = { online: "● ONLINE", building: "◉ BUILDING", planned: "○ IN DEV" };
+const grid = document.getElementById("svcGrid");
+for (const s of SERVICES) {
+  const el = document.createElement(s.st === "online" ? "a" : "button");
+  el.className = "tile"; el.dataset.st = s.st;
+  if (s.st === "online") el.href = s.href;
+  el.innerHTML = `<div class="tile-top"><span class="st"></span><h3>${s.n}</h3></div>
+    <p>${s.d}</p>
+    <div class="tile-meta"><span class="stx">${STX[s.st]}</span><span class="iss">${s.iss ? "#" + s.iss : "live"}</span></div>`;
+  if (s.st !== "online") el.addEventListener("click", () => openDenied(s));
+  grid.appendChild(el);
+}
+
+/* ------------------------------------------------ access-denied modal */
+const veil = document.getElementById("veil");
+let lastFocus = null;
+function openDenied(s) {
+  lastFocus = document.activeElement;
+  document.getElementById("dMod").textContent = s.n.toUpperCase().replace(/[ /]+/g, "_");
+  document.getElementById("dIssue").href = `https://github.com/adssib/home-lab/issues/${s.iss}`;
+  veil.classList.add("open");
+  document.getElementById("dClose").focus();
+}
+function closeDenied() {
+  veil.classList.remove("open");
+  if (lastFocus) lastFocus.focus();
+}
+document.getElementById("dClose").addEventListener("click", closeDenied);
+veil.addEventListener("click", e => { if (e.target === veil) closeDenied(); });
+addEventListener("keydown", e => { if (e.key === "Escape") closeDenied(); });
+
+/* ============================================================ globe */
+const canvas = document.getElementById("globe");
+const ctx = canvas.getContext("2d");
+const DPR = Math.min(devicePixelRatio || 1, 2);
+
+/* --- land dots from bitmask (360x180, 1° cells, row 0 = lat +89.5) --- */
+function toVec(lat, lon) {
+  const la = lat * Math.PI / 180, lo = lon * Math.PI / 180;
+  return [Math.cos(la) * Math.sin(lo), Math.sin(la), Math.cos(la) * Math.cos(lo)];
+}
+function landDots() {
+  const bin = atob(LANDMASK_B64);
+  const isLand = (lat, lon) => {
+    const r = Math.min(179, Math.max(0, Math.round(89.5 - lat)));
+    const c = Math.min(359, Math.max(0, Math.round(lon + 179.5)));
+    const i = r * 360 + c;
+    return (bin.charCodeAt(i >> 3) & (1 << (i & 7))) !== 0;
+  };
+  const dots = [];
+  const STEP = 1.9;
+  for (let lat = -88; lat <= 88; lat += STEP) {
+    const lonStep = STEP / Math.max(0.18, Math.cos(lat * Math.PI / 180));
+    for (let lon = -180; lon < 180; lon += lonStep) {
+      if (isLand(lat, lon)) dots.push(toVec(lat, lon));
+    }
+  }
+  return dots;
+}
+function slerp(a, b, t) {
+  let dot = a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+  dot = Math.min(1, Math.max(-1, dot));
+  const th = Math.acos(dot);
+  if (th < 1e-4) return a.slice();
+  const s = Math.sin(th), wa = Math.sin((1 - t) * th) / s, wb = Math.sin(t * th) / s;
+  return [a[0]*wa + b[0]*wb, a[1]*wa + b[1]*wb, a[2]*wa + b[2]*wb];
+}
+
+const DOTS = landDots();
+const HOME_V = toVec(HOME.lat, HOME.lon);
+const TILT = 0.42;
+
+let rot = 1.28;                   // start with the Americas (home) facing front
+let dragging = false, dragX = 0, dragRot = 0, autoPaused = 0;
+
+function project(v, rotY, R, cx, cy) {
+  const cs = Math.cos(rotY), sn = Math.sin(rotY);
+  const x = v[0] * cs + v[2] * sn;
+  const z = -v[0] * sn + v[2] * cs;
+  const y = v[1];
+  const ct = Math.cos(TILT), st = Math.sin(TILT);
+  const y2 = y * ct - z * st;
+  const z2 = y * st + z * ct;
+  return [cx + x * R, cy - y2 * R, z2];
+}
+
+/* --- arcs + events (the signature: globe and ticker share one stream) --- */
+const arcs = [], pings = [];
+let realFeed = null, realIdx = 0;
+fetch("/data/connections.json")            // seam for issue #5's GeoIP pipeline
+  .then(r => r.ok ? r.json() : null)
+  .then(j => { if (j && Array.isArray(j.events) && j.events.length) realFeed = j.events; })
+  .catch(() => {});
+
+function randIp(cc) {
+  const a = { US: 34, CA: 24, BR: 177, GB: 51, FR: 91, DE: 88, NL: 145, SE: 78, MA: 105, EG: 156, NG: 197, AE: 94, IN: 103, SG: 128, JP: 133, KR: 121, AU: 101, TN: 41 }[cc] || 92;
+  return `${a}.${(Math.random()*223+1)|0}.${(Math.random()*254+1)|0}.x`;
+}
+function spawnEvent() {
+  let name, cc, lat, lon, path;
+  if (realFeed) {
+    const e = realFeed[realIdx++ % realFeed.length];
+    name = e.city; cc = e.country; lat = e.lat; lon = e.lon; path = e.path || "/";
+  } else {
+    const c = CITIES[(Math.random() * CITIES.length) | 0];
+    name = c[0]; cc = c[1]; lat = c[2]; lon = c[3];
+    path = PATHS[(Math.random() * PATHS.length) | 0];
+  }
+  arcs.push({ a: toVec(lat, lon), b: HOME_V, t: 0, dur: 1.7 + Math.random() * .7 });
+  pushTick(`> conn ${randIp(cc)} :: <span class="geo">${name}, ${cc}</span> → GET ${path} :: <span class="ok">200</span> ${(18 + Math.random() * 240) | 0}ms`);
+}
+
+/* --- ticker --- */
+const ticker = document.getElementById("ticker");
+function pushTick(html) {
+  const d = document.createElement("div");
+  d.className = "tl"; d.innerHTML = html;
+  ticker.appendChild(d);
+  while (ticker.children.length > 6) ticker.firstChild.remove();
+}
+pushTick(`> akkarilab feed online :: mode=SIMULATED :: waiting for events…`);
+
+/* --- render loop --- */
+let last = 0, frames = 0, slow = 0, dotSkip = 1, running = true;
+
+function draw(ts) {
+  if (!running) return;
+  const dt = Math.min(0.05, (ts - last) / 1000 || 0.016);
+  last = ts;
+  frames++;
+  if (dt > 0.04 && frames > 30 && ++slow > 20 && dotSkip === 1) dotSkip = 2; // potato-visitor mode
+
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (canvas.width !== (w * DPR | 0)) { canvas.width = w * DPR; canvas.height = h * DPR; }
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  const R = Math.min(w / 2.35, h / 2.15);
+  const cx = w / 2, cy = h / 2 + 6;
+
+  if (!dragging && ts > autoPaused) rot += dt * 0.11;
+
+  // limb glow
+  ctx.beginPath(); ctx.arc(cx, cy, R + 1, 0, 7);
+  ctx.strokeStyle = `rgba(${ACC},.18)`; ctx.lineWidth = 1.2; ctx.stroke();
+  const g = ctx.createRadialGradient(cx, cy, R * .55, cx, cy, R * 1.25);
+  g.addColorStop(0, `rgba(${ACC},0)`); g.addColorStop(1, `rgba(${ACC},.06)`);
+  ctx.fillStyle = g; ctx.fillRect(cx - R * 1.3, cy - R * 1.3, R * 2.6, R * 2.6);
+
+  // land dots
+  for (let i = 0; i < DOTS.length; i += dotSkip) {
+    const p = project(DOTS[i], rot, R, cx, cy);
+    if (p[2] <= 0.02) continue;
+    const a = 0.25 + p[2] * 0.65;
+    ctx.fillStyle = `rgba(${ACC},${a})`;
+    const s = 1.2 + p[2] * 1.1;
+    ctx.fillRect(p[0] - s / 2, p[1] - s / 2, s, s);
+  }
+
+  // arcs
+  for (let i = arcs.length - 1; i >= 0; i--) {
+    const A = arcs[i];
+    A.t += dt / A.dur;
+    const T = Math.min(1, A.t);
+    const tail = Math.max(0, T - 0.32);
+    ctx.beginPath();
+    let started = false;
+    for (let t = tail; t <= T + 1e-6; t += 0.02) {
+      const v = slerp(A.a, A.b, t);
+      const lift = 1 + 0.16 * Math.sin(Math.PI * t);
+      const p = project([v[0] * lift, v[1] * lift, v[2] * lift], rot, R, cx, cy);
+      if (p[2] < -0.12) { started = false; continue; }
+      if (!started) { ctx.moveTo(p[0], p[1]); started = true; }
+      else ctx.lineTo(p[0], p[1]);
+    }
+    const fade = A.t > 1 ? Math.max(0, 1 - (A.t - 1) * 3) : 1;
+    ctx.strokeStyle = `rgba(${ACC},${0.75 * fade})`;
+    ctx.lineWidth = 1.4; ctx.stroke();
+    if (T < 1) {
+      const v = slerp(A.a, A.b, T);
+      const lift = 1 + 0.16 * Math.sin(Math.PI * T);
+      const p = project([v[0] * lift, v[1] * lift, v[2] * lift], rot, R, cx, cy);
+      if (p[2] > -0.12) {
+        ctx.beginPath(); ctx.arc(p[0], p[1], 2.1, 0, 7);
+        ctx.fillStyle = ACC_BRIGHT; ctx.fill();
+      }
+    } else if (!A.pinged) {
+      A.pinged = true; pings.push({ v: A.b, t: 0 });
+    }
+    if (A.t > 1.35) arcs.splice(i, 1);
+  }
+
+  // pings (expanding ring at destination)
+  for (let i = pings.length - 1; i >= 0; i--) {
+    const P = pings[i]; P.t += dt / 0.9;
+    if (P.t >= 1) { pings.splice(i, 1); continue; }
+    const p = project(P.v, rot, R, cx, cy);
+    if (p[2] > 0) {
+      ctx.beginPath(); ctx.arc(p[0], p[1], 2 + P.t * 14, 0, 7);
+      ctx.strokeStyle = `rgba(${ACC},${0.7 * (1 - P.t)})`;
+      ctx.lineWidth = 1.2; ctx.stroke();
+    }
+  }
+
+  // home marker
+  const hp = project(HOME_V, rot, R, cx, cy);
+  if (hp[2] > 0) {
+    ctx.beginPath(); ctx.arc(hp[0], hp[1], 3, 0, 7);
+    ctx.fillStyle = ACC_BRIGHT; ctx.fill();
+    ctx.beginPath(); ctx.arc(hp[0], hp[1], 6 + Math.sin(ts / 300) * 2, 0, 7);
+    ctx.strokeStyle = `rgba(${ACC},.55)`; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = TXT; ctx.font = "10px " + getComputedStyle(document.body).fontFamily;
+    ctx.fillText("AKKARILAB · MTL", hp[0] + 10, hp[1] + 3);
+  }
+
+  requestAnimationFrame(draw);
+}
+
+/* drag to spin */
+canvas.addEventListener("pointerdown", e => {
+  dragging = true; dragX = e.clientX; dragRot = rot; canvas.setPointerCapture(e.pointerId);
+  canvas.style.cursor = "grabbing";
+});
+canvas.addEventListener("pointermove", e => {
+  if (dragging) rot = dragRot + (e.clientX - dragX) * 0.006;
+});
+canvas.addEventListener("pointerup", () => {
+  dragging = false; autoPaused = last + 2500; canvas.style.cursor = "grab";
+});
+canvas.style.cursor = "grab";
+
+/* event cadence */
+let evTimer = null;
+function scheduleEvents() {
+  evTimer = setTimeout(() => { spawnEvent(); scheduleEvents(); }, 1300 + Math.random() * 1400);
+}
+
+const drawStaticGlobe = () => requestAnimationFrame(ts => { running = true; draw(ts); running = false; });
+if (REDUCED) {
+  drawStaticGlobe();
+  themeRedraws.push(drawStaticGlobe);
+  for (let i = 0; i < 4; i++) {
+    const c = CITIES[(Math.random() * CITIES.length) | 0];
+    pushTick(`> conn ${randIp(c[1])} :: <span class="geo">${c[0]}, ${c[1]}</span> → GET / :: <span class="ok">200</span>`);
+  }
+} else {
+  requestAnimationFrame(draw);
+  scheduleEvents();
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { running = false; clearTimeout(evTimer); }
+    else { running = true; last = performance.now(); requestAnimationFrame(draw); scheduleEvents(); }
+  });
+}
+
+/* ============================================================ donut */
+const REGIONS = [
+  { n: "Europe",        v: 42, c: "#16a34a" },
+  { n: "North America", v: 27, c: "#a855f7" },
+  { n: "Asia",          v: 17, c: "#0891b2" },
+  { n: "Africa",        v: 9,  c: "#3b82f6" },
+  { n: "Other",         v: 5,  c: "#ec4899" },
+];
+const donut = document.getElementById("donut");
+const dctx = donut.getContext("2d");
+const tip = document.getElementById("tip");
+function drawDonut() {
+  const S = 180 * DPR; donut.width = S; donut.height = S;
+  donut.style.width = donut.style.height = "180px";
+  dctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const cx = 90, cy = 90, r = 74, ir = 46;
+  let a0 = -Math.PI / 2;
+  for (const seg of REGIONS) {
+    const a1 = a0 + (seg.v / 100) * Math.PI * 2;
+    dctx.beginPath();
+    dctx.arc(cx, cy, r, a0, a1);
+    dctx.arc(cx, cy, ir, a1, a0, true);
+    dctx.closePath();
+    dctx.fillStyle = seg.c; dctx.fill();
+    dctx.strokeStyle = PANEL; dctx.lineWidth = 2; dctx.stroke(); // 2px surface gap
+    seg.a0 = a0; seg.a1 = a1;
+    a0 = a1;
+  }
+  dctx.fillStyle = TXT;
+  dctx.font = "700 15px " + getComputedStyle(document.body).fontFamily;
+  dctx.textAlign = "center";
+  dctx.fillText("100%", cx, cy + 1);
+  dctx.font = "9px " + getComputedStyle(document.body).fontFamily;
+  dctx.fillStyle = MUT;
+  dctx.fillText("OF NOT MUCH", cx, cy + 15);
+}
+drawDonut();
+themeRedraws.push(drawDonut);
+const legend = document.getElementById("legend");
+for (const seg of REGIONS) {
+  const d = document.createElement("div");
+  d.className = "li";
+  d.innerHTML = `<span class="sw" style="background:${seg.c}"></span><span class="ln">${seg.n}</span><span class="lv">${seg.v}%</span>`;
+  legend.appendChild(d);
+}
+donut.addEventListener("pointermove", e => {
+  const b = donut.getBoundingClientRect();
+  const x = e.clientX - b.left - 90, y = e.clientY - b.top - 90;
+  const d = Math.hypot(x, y);
+  if (d < 46 || d > 74) { tip.style.display = "none"; return; }
+  let ang = Math.atan2(y, x); if (ang < -Math.PI / 2) ang += Math.PI * 2;
+  const seg = REGIONS.find(s => ang >= s.a0 && ang < s.a1);
+  if (!seg) { tip.style.display = "none"; return; }
+  tip.style.display = "block";
+  tip.textContent = `${seg.n} — ${seg.v}% of requests`;
+  tip.style.left = e.clientX + 14 + "px"; tip.style.top = e.clientY + 6 + "px";
+});
+donut.addEventListener("pointerleave", () => { tip.style.display = "none"; });
+
+/* ============================================================ sparklines */
+document.querySelectorAll(".spark").forEach(sp => {
+  const k = sp.dataset.k;
+  const cv = sp.querySelector("canvas"), sctx = cv.getContext("2d");
+  const vEl = sp.querySelector(".v");
+  const N = 60, data = [];
+  const base = k === "CPU" ? 24 : k === "MEM" ? 61 : 90;
+  let val = base;
+  function step() {
+    val += (Math.random() - 0.5) * (k === "NET" ? 34 : 7) + (base - val) * 0.08;
+    val = Math.max(2, Math.min(k === "NET" ? 400 : 97, val));
+    data.push(val); if (data.length > N) data.shift();
+  }
+  for (let i = 0; i < N; i++) step();
+  function render() {
+    const w = cv.clientWidth, h = cv.clientHeight;
+    cv.width = w * DPR; cv.height = h * DPR;
+    sctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    sctx.clearRect(0, 0, w, h);
+    const max = k === "NET" ? 420 : 100;
+    sctx.beginPath();
+    data.forEach((v, i) => {
+      const x = (i / (N - 1)) * w, y = h - 3 - (v / max) * (h - 8);
+      i ? sctx.lineTo(x, y) : sctx.moveTo(x, y);
+    });
+    sctx.strokeStyle = SPARK; sctx.lineWidth = 2; sctx.stroke();
+    sctx.lineTo(w, h); sctx.lineTo(0, h); sctx.closePath();
+    sctx.fillStyle = `rgba(${SPARK_RGB},.10)`; sctx.fill();
+    vEl.textContent = k === "NET" ? `${data[N - 1] | 0} kb/s` : `${data[N - 1] | 0}%`;
+  }
+  render();
+  themeRedraws.push(render);
+  if (!REDUCED) setInterval(() => { if (!document.hidden) { step(); render(); } }, 900);
+  sp.addEventListener("pointermove", e => {
+    const b = cv.getBoundingClientRect();
+    const i = Math.max(0, Math.min(N - 1, Math.round((e.clientX - b.left) / b.width * (N - 1))));
+    tip.style.display = "block";
+    tip.textContent = `${k}: ${data[i] | 0}${k === "NET" ? " kb/s" : "%"}`;
+    tip.style.left = e.clientX + 14 + "px"; tip.style.top = e.clientY + 6 + "px";
+  });
+  sp.addEventListener("pointerleave", () => { tip.style.display = "none"; });
+});
+</script>
 </body>
 </html>
